@@ -28,10 +28,15 @@
           libiconv,
           lib,
         }:
+        let
+          toolchain = rust-bin.stable.latest.default.override {
+            extensions = [ "rust-src" ];
+          };
+        in
         mkShell {
           nativeBuildInputs =
             [
-              rust-bin.stable.latest.default
+              toolchain
               pkg-config
               protobuf
             ]
@@ -52,9 +57,13 @@
                 CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER = "qemu-aarch64";
                 HOST_CC = "${stdenv.cc.nativePrefix}cc";
                 TARGET_CC = "${stdenv.cc.targetPrefix}cc";
+                RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
               }
             else
-              { };
+              {
+                RUST_SRC_PATH = "${toolchain}/lib/rustlib/src/rust/library";
+              };
+
         };
     in
     flake-utils.lib.eachDefaultSystem (system: {
