@@ -24,6 +24,7 @@
           openssl,
           stdenv,
           protobuf,
+          cargo-make,
           fontconfig,
           libiconv,
           lib,
@@ -39,6 +40,7 @@
               toolchain
               pkg-config
               protobuf
+              cargo-make
             ]
             ++ lib.optionals stdenv.buildPlatform.isDarwin [
               libiconv
