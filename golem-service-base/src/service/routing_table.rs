@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use http::Uri;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::sync::RwLock;
@@ -100,7 +101,7 @@ pub struct RoutingTableConfig {
 }
 
 impl RoutingTableConfig {
-    pub fn url(&self) -> http_02::Uri {
+    pub fn url(&self) -> Uri {
         format!("http://{}:{}", self.host, self.port)
             .parse()
             .expect("Failed to parse shard manager URL")

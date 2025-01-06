@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ use bytes::Bytes;
 use futures::TryStreamExt;
 use golem_api_grpc::proto::golem::common::{ErrorBody, ErrorsBody};
 use golem_api_grpc::proto::golem::component::v1::component_error;
-use golem_common::config::RetryConfig;
 use golem_common::model::component::ComponentOwner;
 use golem_common::model::component_constraint::FunctionConstraintCollection;
 use golem_common::model::component_metadata::{ComponentMetadata, ComponentProcessingError};
@@ -35,6 +34,7 @@ use golem_common::model::plugin::{
     PluginInstallationUpdate, PluginScope, PluginTypeSpecificDefinition,
 };
 use golem_common::model::ComponentVersion;
+use golem_common::model::RetryConfig;
 use golem_common::model::{AccountId, PluginInstallationId};
 use golem_common::model::{
     ComponentFilePath, ComponentFilePermissions, ComponentId, ComponentType, InitialComponentFile,
@@ -1735,10 +1735,22 @@ impl ReplayableStream for ZipEntryStream {
     }
 
     async fn length(&self) -> Result<u64, String> {
-        Ok(tokio::fs::metadata(self.file.path())
+        let reopened = self
+            .file
+            .reopen()
+            .map_err(|e| format!("Failed to reopen file: {e}"))?;
+        let file = tokio::fs::File::from_std(reopened);
+        let buf_reader = BufReader::new(file);
+        let zip_archive = ZipFileReader::with_tokio(buf_reader)
             .await
-            .map_err(|e| format!("Failed to get file metadata: {e}"))?
-            .len())
+            .map_err(|e| format!("Failed to open zip archive: {e}"))?;
+
+        Ok(zip_archive
+            .file()
+            .entries()
+            .get(self.index)
+            .ok_or("Entry with not found in archive")?
+            .uncompressed_size())
     }
 }
 

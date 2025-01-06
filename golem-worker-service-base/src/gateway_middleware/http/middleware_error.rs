@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ use crate::gateway_execution::auth_call_back_binding_handler::AuthorisationError
 use crate::gateway_execution::gateway_session::SessionId;
 use golem_common::SafeDisplay;
 
+#[derive(Debug)]
 pub enum MiddlewareError {
     Unauthorized(AuthorisationError),
     InternalError(String),

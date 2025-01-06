@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,11 +28,9 @@ use crate::examples;
 use crate::init::{init_profile, CliKind, DummyProfileAuth};
 use crate::model::{ComponentUriArg, GolemError, GolemResult};
 use crate::oss::model::OssContext;
-use crate::stubgen::handle_stubgen;
 use api_definition::ApiDefinitionSubcommand;
 use api_deployment::ApiDeploymentSubcommand;
 use clap::{self, Command, Subcommand};
-use colored::Colorize;
 use component::ComponentSubCommand;
 use golem_common::uri::oss::uri::ComponentUri;
 use golem_wasm_rpc_stubgen::App;
@@ -87,7 +85,7 @@ impl<Ctx> CliCommand<Ctx> for EmptyCommand {
 }
 
 /// convenience function to get both the clap::Command and the parsed struct in one pass
-pub fn command_and_parsed<T: clap::Parser>() -> (clap::Command, T) {
+pub fn command_and_parsed<T: clap::Parser>() -> (Command, T) {
     let mut command = T::command();
 
     let mut matches = command.clone().get_matches();
@@ -108,12 +106,6 @@ pub enum StaticSharedCommand {
         #[command(flatten)]
         command: diagnose::cli::Command,
     },
-    /// [DEPRECATED, use the app command] WASM RPC stub generator
-    #[cfg(feature = "stubgen")]
-    Stubgen {
-        #[command(subcommand)]
-        subcommand: golem_wasm_rpc_stubgen::Command,
-    },
     /// Create a new Golem component from built-in examples
     #[command(flatten)]
     Examples(golem_examples::cli::Command),
@@ -121,25 +113,11 @@ pub enum StaticSharedCommand {
 
 impl<Ctx> CliCommand<Ctx> for StaticSharedCommand {
     async fn run(self, _ctx: Ctx) -> Result<GolemResult, GolemError> {
-        eprintln!(
-            "{}",
-            "WARNING: THIS COMMAND IS DEPRECATED AND MIGHT MODIFY SOURCE WIT FILES!".yellow()
-        );
-        eprintln!(
-            "{}",
-            format!(
-                "\nThe recommended new way to handle wasm-rpc stub generation and linking is the {} command.\n",
-                "golem-cli app".bold().underline(),
-            ).yellow(),
-        );
-
         match self {
             StaticSharedCommand::Diagnose { command } => {
                 diagnose(command);
                 Ok(GolemResult::Str("".to_string()))
             }
-            #[cfg(feature = "stubgen")]
-            StaticSharedCommand::Stubgen { subcommand } => handle_stubgen(subcommand).await,
             StaticSharedCommand::Examples(golem_examples::cli::Command::ListExamples {
                 min_tier,
                 language,
@@ -168,7 +146,6 @@ pub enum SharedCommand<
     ProfileAdd: clap::Args,
 > {
     /// Build components with application manifests
-    #[cfg(feature = "stubgen")]
     #[group(skip)]
     App {
         #[clap(flatten)]

@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ pub mod init;
 pub mod model;
 pub mod oss;
 pub mod service;
-pub mod stubgen;
 
 #[cfg(test)]
 test_r::enable!();
@@ -149,7 +148,7 @@ where
         .or_else(|| oss_profile.as_ref().map(|(_, p)| p.config.default_format))
         .unwrap_or_default();
 
-    init_tracing(parsed.verbosity.clone());
+    init_tracing(parsed.verbosity);
 
     info!(
         profile = format!("{:?}", oss_profile.as_ref().map(|(n, _)| n)),

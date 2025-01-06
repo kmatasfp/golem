@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ use wasmtime_wasi::bindings::filesystem::preopens::{Descriptor, Host};
 #[async_trait]
 impl<Ctx: WorkerCtx> Host for DurableWorkerCtx<Ctx> {
     async fn get_directories(&mut self) -> anyhow::Result<Vec<(Resource<Descriptor>, String)>> {
-        let _permit = self.begin_async_host_function().await?;
         record_host_function_call("cli_base::preopens", "get_directories");
 
         let current_dirs1 = Host::get_directories(&mut self.as_wasi_view()).await?;
@@ -64,12 +63,5 @@ impl<Ctx: WorkerCtx> Host for DurableWorkerCtx<Ctx> {
             },
         )
         .await
-    }
-}
-
-#[async_trait]
-impl<Ctx: WorkerCtx> Host for &mut DurableWorkerCtx<Ctx> {
-    async fn get_directories(&mut self) -> anyhow::Result<Vec<(Resource<Descriptor>, String)>> {
-        (*self).get_directories().await
     }
 }

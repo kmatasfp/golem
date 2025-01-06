@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -171,14 +171,4 @@ fn create_wasmtime_config() -> wasmtime::Config {
     config.wasm_backtrace_details(WasmBacktraceDetails::Enable);
 
     config
-}
-
-pub trait UriBackConversion {
-    fn as_http_02(&self) -> http_02::Uri;
-}
-
-impl UriBackConversion for http::Uri {
-    fn as_http_02(&self) -> http_02::Uri {
-        self.to_string().parse().unwrap()
-    }
 }

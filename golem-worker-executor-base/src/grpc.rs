@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1726,7 +1726,8 @@ impl<Ctx: WorkerCtx, Svcs: HasAll<Ctx> + UsesAllDeps<Ctx = Ctx> + Send + Sync + 
             "invoke_worker",
             worker_id = proto_target_worker_id_string(&request.worker_id),
             function = request.name,
-            account_id = proto_account_id_string(&request.account_id)
+            account_id = proto_account_id_string(&request.account_id),
+            idempotency_key = proto_idempotency_key_string(&request.idempotency_key),
         );
 
         match self
@@ -2397,7 +2398,7 @@ impl CanStartWorker for golem::workerexecutor::v1::ListDirectoryRequest {
     }
 
     fn account_limits(&self) -> Option<GrpcResourceLimits> {
-        self.account_limits.clone()
+        self.account_limits
     }
 
     fn worker_id(&self) -> Result<common_model::TargetWorkerId, GolemError> {
@@ -2431,7 +2432,7 @@ impl CanStartWorker for golem::workerexecutor::v1::GetFileContentsRequest {
     }
 
     fn account_limits(&self) -> Option<GrpcResourceLimits> {
-        self.account_limits.clone()
+        self.account_limits
     }
 
     fn worker_id(&self) -> Result<common_model::TargetWorkerId, GolemError> {
@@ -2465,7 +2466,7 @@ impl CanStartWorker for golem::workerexecutor::v1::InvokeWorkerRequest {
     }
 
     fn account_limits(&self) -> Option<GrpcResourceLimits> {
-        self.account_limits.clone()
+        self.account_limits
     }
 
     fn worker_id(&self) -> Result<common_model::TargetWorkerId, GolemError> {
@@ -2501,7 +2502,7 @@ impl GrpcInvokeRequest for golem::workerexecutor::v1::InvokeWorkerRequest {
     }
 
     fn idempotency_key(&self) -> Result<Option<IdempotencyKey>, GolemError> {
-        Ok(None)
+        Ok(self.idempotency_key.clone().map(IdempotencyKey::from))
     }
 
     fn name(&self) -> String {
@@ -2519,7 +2520,7 @@ impl CanStartWorker for golem::workerexecutor::v1::InvokeAndAwaitWorkerRequest {
     }
 
     fn account_limits(&self) -> Option<GrpcResourceLimits> {
-        self.account_limits.clone()
+        self.account_limits
     }
 
     fn worker_id(&self) -> Result<common_model::TargetWorkerId, GolemError> {
@@ -2560,16 +2561,6 @@ impl GrpcInvokeRequest for golem::workerexecutor::v1::InvokeAndAwaitWorkerReques
 
     fn name(&self) -> String {
         self.name.clone()
-    }
-}
-
-pub trait UriBackConversion {
-    fn as_http_02(&self) -> http_02::Uri;
-}
-
-impl UriBackConversion for http::Uri {
-    fn as_http_02(&self) -> http_02::Uri {
-        self.to_string().parse().unwrap()
     }
 }
 

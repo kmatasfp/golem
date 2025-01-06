@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -776,7 +776,7 @@ pub mod worker {
     };
     use golem_common::uri::oss::urn::{ComponentUrn, WorkerUrn};
     use golem_wasm_rpc::protobuf::type_annotated_value::TypeAnnotatedValue;
-    use golem_wasm_rpc::{type_annotated_value_to_string, ValueAndType};
+    use golem_wasm_rpc::{print_type_annotated_value, ValueAndType};
     use indoc::{formatdoc, indoc, printdoc};
     use itertools::Itertools;
     use serde::{Deserialize, Serialize};
@@ -1335,7 +1335,7 @@ pub mod worker {
 
     fn print_value(value: &ValueAndType) -> String {
         let tav: TypeAnnotatedValue = value.try_into().expect("Failed to convert value to string");
-        type_annotated_value_to_string(&tav).expect("Failed to convert value to string")
+        print_type_annotated_value(&tav).expect("Failed to convert value to string")
     }
 }
 

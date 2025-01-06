@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use golem_common::config::{
-    ConfigExample, ConfigLoader, HasConfigExamples, RedisConfig, RetryConfig,
-};
+use golem_common::config::{ConfigExample, ConfigLoader, HasConfigExamples, RedisConfig};
+use golem_common::model::RetryConfig;
 use golem_common::tracing::TracingConfig;
 
 use crate::model::Empty;

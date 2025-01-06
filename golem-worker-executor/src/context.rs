@@ -1,4 +1,4 @@
-// Copyright 2024 Golem Cloud
+// Copyright 2024-2025 Golem Cloud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -395,9 +395,9 @@ impl ResourceLimiterAsync for Context {
 
     async fn table_growing(
         &mut self,
-        _current: u32,
-        _desired: u32,
-        _maximum: Option<u32>,
+        _current: usize,
+        _desired: usize,
+        _maximum: Option<usize>,
     ) -> anyhow::Result<bool> {
         Ok(true)
     }
