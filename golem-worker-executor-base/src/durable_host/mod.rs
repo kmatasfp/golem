@@ -18,6 +18,7 @@
 use crate::durable_host::http::serialized::SerializableHttpRequest;
 use crate::durable_host::io::{ManagedStdErr, ManagedStdIn, ManagedStdOut};
 use crate::durable_host::replay_state::ReplayState;
+use crate::durable_host::serialized::SerializableError;
 use crate::durable_host::wasm_rpc::UrnExtensions;
 use crate::error::GolemError;
 use crate::function_result_interpreter::interpret_function_results;
@@ -59,12 +60,11 @@ use futures_util::TryFutureExt;
 use futures_util::TryStreamExt;
 use golem_common::model::component::ComponentOwner;
 use golem_common::model::oplog::{
-    IndexedResourceKey, LogLevel, OplogEntry, OplogIndex, UpdateDescription, WorkerError,
-    WorkerResourceId, WrappedFunctionType,
+    DurableFunctionType, IndexedResourceKey, LogLevel, OplogEntry, OplogIndex, UpdateDescription,
+    WorkerError, WorkerResourceId,
 };
 use golem_common::model::plugin::{PluginOwner, PluginScope};
 use golem_common::model::regions::{DeletedRegions, OplogRegion};
-use golem_common::model::RetryConfig;
 use golem_common::model::{exports, PluginInstallationId};
 use golem_common::model::{
     AccountId, ComponentFilePath, ComponentFilePermissions, ComponentFileSystemNode,
@@ -73,6 +73,7 @@ use golem_common::model::{
     ScheduledAction, SuccessfulUpdateRecord, Timestamp, WorkerEvent, WorkerFilter, WorkerId,
     WorkerMetadata, WorkerResourceDescription, WorkerStatus, WorkerStatusRecord,
 };
+use golem_common::model::{RetryConfig, TargetWorkerId};
 use golem_common::retries::get_delay;
 use golem_wasm_rpc::protobuf::type_annotated_value::TypeAnnotatedValue;
 use golem_wasm_rpc::wasmtime::ResourceStore;
@@ -116,6 +117,7 @@ mod sockets;
 pub mod wasm_rpc;
 
 mod durability;
+mod dynamic_linking;
 mod replay_state;
 
 /// Partial implementation of the WorkerCtx interfaces for adding durable execution to workers.
@@ -285,6 +287,10 @@ impl<Ctx: WorkerCtx> DurableWorkerCtx<Ctx> {
 
     pub fn worker_id(&self) -> &WorkerId {
         &self.owned_worker_id.worker_id
+    }
+
+    pub fn owned_worker_id(&self) -> &OwnedWorkerId {
+        &self.owned_worker_id
     }
 
     pub fn component_metadata(&self) -> &ComponentMetadata {
@@ -463,6 +469,35 @@ impl<Ctx: WorkerCtx> DurableWorkerCtx<Ctx> {
                             .await;
                     }
                 }
+            }
+        }
+    }
+
+    pub async fn generate_unique_local_worker_id(
+        &mut self,
+        remote_worker_id: TargetWorkerId,
+    ) -> Result<WorkerId, GolemError> {
+        match remote_worker_id.clone().try_into_worker_id() {
+            Some(worker_id) => Ok(worker_id),
+            None => {
+                let durability = Durability::<WorkerId, SerializableError>::new(
+                    self,
+                    "golem::rpc::wasm-rpc",
+                    "generate_unique_local_worker_id",
+                    DurableFunctionType::ReadLocal,
+                )
+                .await?;
+                let worker_id = if durability.is_live() {
+                    let result = self
+                        .rpc()
+                        .generate_unique_local_worker_id(remote_worker_id)
+                        .await;
+                    durability.persist(self, (), result).await
+                } else {
+                    durability.replay(self).await
+                }?;
+
+                Ok(worker_id)
             }
         }
     }
@@ -1034,7 +1069,7 @@ impl<Ctx: WorkerCtx> UpdateManagement for DurableWorkerCtx<Ctx> {
         // While calling a snapshotting function (load/save), we completely turn off persistence
         // In addition to the user-controllable persistence level we also skip writing the
         // oplog entries marking the exported function call.
-        let previous_level = self.state.persistence_level.clone();
+        let previous_level = self.state.persistence_level;
         self.state.snapshotting_mode = Some(previous_level);
         self.state.persistence_level = PersistenceLevel::PersistNothing;
     }
@@ -1849,14 +1884,13 @@ impl<Owner: PluginOwner, Scope: PluginScope> PrivateDurableWorkerState<Owner, Sc
 
     pub async fn begin_function(
         &mut self,
-        wrapped_function_type: &WrappedFunctionType,
+        function_type: &DurableFunctionType,
     ) -> Result<OplogIndex, GolemError> {
         if self.persistence_level != PersistenceLevel::PersistNothing
-            && ((*wrapped_function_type == WrappedFunctionType::WriteRemote
-                && !self.assume_idempotence)
+            && ((*function_type == DurableFunctionType::WriteRemote && !self.assume_idempotence)
                 || matches!(
-                    *wrapped_function_type,
-                    WrappedFunctionType::WriteRemoteBatched(None)
+                    *function_type,
+                    DurableFunctionType::WriteRemoteBatched(None)
                 ))
         {
             if self.is_live() {
@@ -1883,8 +1917,8 @@ impl<Owner: PluginOwner, Scope: PluginScope> PrivateDurableWorkerState<Owner, Sc
                         Ok(begin_index)
                     }
                 } else if matches!(
-                    *wrapped_function_type,
-                    WrappedFunctionType::WriteRemoteBatched(None)
+                    *function_type,
+                    DurableFunctionType::WriteRemoteBatched(None)
                 ) {
                     let end_index = self
                         .replay_state
@@ -1926,15 +1960,14 @@ impl<Owner: PluginOwner, Scope: PluginScope> PrivateDurableWorkerState<Owner, Sc
 
     pub async fn end_function(
         &mut self,
-        wrapped_function_type: &WrappedFunctionType,
+        function_type: &DurableFunctionType,
         begin_index: OplogIndex,
     ) -> Result<(), GolemError> {
         if self.persistence_level != PersistenceLevel::PersistNothing
-            && ((*wrapped_function_type == WrappedFunctionType::WriteRemote
-                && !self.assume_idempotence)
+            && ((*function_type == DurableFunctionType::WriteRemote && !self.assume_idempotence)
                 || matches!(
-                    *wrapped_function_type,
-                    WrappedFunctionType::WriteRemoteBatched(None)
+                    *function_type,
+                    DurableFunctionType::WriteRemoteBatched(None)
                 ))
         {
             if self.is_live() {

@@ -109,6 +109,7 @@ futures = "0.3"
 futures-core = "0.3.31"
 futures-util = "0.3.31"
 git-version = "0.3.9"
+golem-wit = { version = "=1.1.2" }
 hex = "0.4.3"
 http = "1.2.0" # keep in sync with wasmtime
 humansize = "2.1.3"
@@ -180,7 +181,7 @@ testcontainers-modules = { version = "0.11.4", features = [
     "redis",
     "minio",
 ] }
-test-r = { version = "1.2.0", default-features = true }
+test-r = { version = "2.0.1", default-features = true }
 thiserror = "2.0.6"
 tokio = { version = "1.42", features = [
     "macros",
